@@ -159,5 +159,94 @@ assert(s8.integrity() === 100, 'full integrity at start');
 s8.stress = 50;
 assert(s8.integrity() === 50, 'half integrity at stress 50');
 
+// --- Test 14: Full integration cycle (build → order → cross → result → reset → rebuild) ---
+console.log('\n--- Full integration cycle ---');
+const sc = new GameState();
+// Build phase
+assert(sc.phase === 'build', 'cycle: starts in build');
+sc.placeMaterial('boards', 0);
+sc.placeMaterial('ropes', 1);
+sc.placeMaterial('wedges', 2);
+assert(sc.placedMaterials.length === 3, 'cycle: all materials placed');
+// Order phase
+sc.addToOrder(3); // 少年 first
+sc.addToOrder(4); // 长老 second
+sc.addToOrder(2); // 工匠 third
+sc.addToOrder(1); // 勇者 last
+assert(sc.phase === 'order', 'cycle: transitions to order');
+assert(sc.crossingOrder.length === 4, 'cycle: all 4 in order');
+// Cross phase
+sc.wind = 0;
+assert(sc.startCrossing() === true, 'cycle: crossing starts');
+for (let i = 0; i < 600; i++) { sc.wind = 0; sc.tick(); }
+assert(sc.phase === 'result', 'cycle: reaches result');
+assert(sc.result !== null, 'cycle: result is set');
+assert(sc.result.success === true, 'cycle: full bridge + light-first + no wind = success');
+const allCrossed = sc.persons.every(p => p.crossed);
+assert(allCrossed, 'cycle: all persons crossed');
+// Reset
+sc.reset();
+assert(sc.phase === 'build', 'cycle: reset returns to build');
+assert(sc.placedMaterials.length === 0, 'cycle: reset clears placed materials');
+assert(sc.crossingOrder.length === 0, 'cycle: reset clears order');
+assert(sc.materials.boards === 3, 'cycle: reset restores boards');
+assert(sc.materials.ropes === 2, 'cycle: reset restores ropes');
+assert(sc.materials.wedges === 2, 'cycle: reset restores wedges');
+assert(sc.result === null, 'cycle: reset clears result');
+assert(sc.persons.every(p => !p.crossed && !p.fallen), 'cycle: reset clears person states');
+// Rebuild after reset
+sc.placeMaterial('boards', 0);
+sc.addToOrder(1);
+sc.wind = 0;
+sc.startCrossing();
+for (let i = 0; i < 200; i++) { sc.wind = 0; sc.tick(); }
+assert(sc.phase === 'result', 'cycle: second playthrough reaches result');
+
+// --- Test 15: Phase transition constraints ---
+console.log('\n--- Phase transitions ---');
+const sp = new GameState();
+assert(sp.phase === 'build', 'phase: starts build');
+// Can't add to order if phase is not build/order (already in build, this works)
+assert(sp.addToOrder(1) === true, 'phase: can add order from build');
+assert(sp.phase === 'order', 'phase: transitions build→order');
+// Can still place materials in order phase
+assert(sp.placeMaterial('boards', 0) === true, 'phase: can place in order phase');
+// Can't place during cross
+sp.addToOrder(2);
+sp.startCrossing();
+assert(sp.placeMaterial('ropes', 1) === false, 'phase: cannot place during cross');
+assert(sp.addToOrder(3) === false, 'phase: cannot add order during cross');
+// Can't start crossing again during cross
+assert(sp.startCrossing() === false, 'phase: cannot re-start during cross');
+
+// --- Test 16: Stress drives settlement outcome ---
+console.log('\n--- Stress-driven settlement ---');
+const ss = new GameState();
+ss.placeMaterial('boards', 0); // only 1 material
+ss.addToOrder(1); // 勇者 70kg
+ss.wind = 60; // high wind
+ss.startCrossing();
+for (let i = 0; i < 300; i++) ss.tick();
+assert(ss.phase === 'result', 'settlement: high wind + heavy + partial = reaches result');
+assert(ss.result.success === false, 'settlement: fails under extreme conditions');
+assert(ss.persons.some(p => p.fallen), 'settlement: person falls under collapse');
+
+// --- Test 17: Partial crossing (some cross, some not in order) ---
+console.log('\n--- Partial crossing ---');
+const sp2 = new GameState();
+sp2.placeMaterial('boards', 0);
+sp2.placeMaterial('ropes', 1);
+sp2.placeMaterial('wedges', 2);
+sp2.addToOrder(3); // only 少年 in order
+sp2.wind = 0;
+sp2.startCrossing();
+for (let i = 0; i < 200; i++) { sp2.wind = 0; sp2.tick(); }
+assert(sp2.phase === 'result', 'partial: reaches result');
+assert(sp2.result.success === true, 'partial: ordered person crosses successfully');
+assert(sp2.result.crossed === 1, 'partial: exactly 1 crossed');
+// Others not in order remain un-crossed
+const notInOrder = sp2.persons.filter(p => !sp2.crossingOrder.includes(p.id));
+assert(notInOrder.every(p => !p.crossed && !p.fallen), 'partial: unordered persons unaffected');
+
 console.log('\nResults: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail > 0 ? 1 : 0);
