@@ -52,6 +52,10 @@
         lastTime = now;
       }
     }
+    // Wire result content from event engine
+    if (state.phase === 'result' && !state._resultContent) {
+      state._resultContent = engine.getResultContent(state);
+    }
     // Feed event messages to scene for rendering
     state._eventMessages = engine.getMessages();
     scene.render(state);
