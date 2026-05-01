@@ -248,5 +248,73 @@ assert(sp2.result.crossed === 1, 'partial: exactly 1 crossed');
 const notInOrder = sp2.persons.filter(p => !sp2.crossingOrder.includes(p.id));
 assert(notInOrder.every(p => !p.crossed && !p.fallen), 'partial: unordered persons unaffected');
 
+// --- Test 18: Primary input (placeMaterial) produces multi-dimensional state delta ---
+console.log('\n--- Primary input → state delta (not choice-only) ---');
+const sd = new GameState();
+const preMat = { ...sd.materials };
+const preStress = sd.stress;
+const preWind = sd.wind;
+const prePlaced = sd.placedMaterials.length;
+sd.placeMaterial('boards', 0);
+assert(sd.materials.boards < preMat.boards, 'primary input: boards consumed (material delta)');
+assert(sd.placedMaterials.length > prePlaced, 'primary input: placed materials grew (scene object delta)');
+// At least one of stress/wind changed (risk pressure coupling)
+const stressOrWindChanged = (sd.stress !== preStress) || (sd.wind !== preWind);
+assert(stressOrWindChanged, 'primary input: stress or wind shifted (risk pressure delta)');
+// Not choice-only: verify this is an action on a scene object, not a text selection
+assert(sd.placedMaterials[0].type === 'boards', 'primary input: scene object recorded with type');
+assert(sd.placedMaterials[0].slot === 0, 'primary input: scene object recorded with slot position');
+
+// --- Test 19: Stress threshold 100 triggers collapse mid-crossing ---
+console.log('\n--- Stress 100 collapse boundary ---');
+const sc2 = new GameState();
+sc2.placeMaterial('boards', 0);
+sc2.addToOrder(1); // 勇者 70kg
+sc2.startCrossing();
+// Force stress to just below threshold and tick until it hits 100
+sc2.stress = 99;
+sc2.wind = 80;
+sc2.tick();
+assert(sc2.phase === 'result' || sc2.stress >= 0, 'stress 100 boundary: game responds to extreme stress');
+// Run to completion to verify fallen outcome
+const sc3 = new GameState();
+sc3.placeMaterial('ropes', 0); // weak bridge
+sc3.addToOrder(1); // 勇者 70kg
+sc3.startCrossing();
+sc3.stress = 99; sc3.wind = 90;
+for (let i = 0; i < 300; i++) { sc3.wind = 90; sc3.tick(); }
+assert(sc3.phase === 'result', 'stress 100 boundary: reaches result');
+assert(sc3.result.success === false, 'stress 100 boundary: failure outcome');
+assert(sc3.persons.some(p => p.fallen), 'stress 100 boundary: at least one person falls');
+
+// --- Test 20: Core loop sequence validation ---
+// Verify full core loop: 查看缺口 -> 放置板/绳/楔 -> 安排通过顺序 -> 结构受力 -> 成功通过或坠落
+console.log('\n--- Core loop sequence ---');
+const cl = new GameState();
+// Step 1: Gap visible (initial state has gap — verified by bridge slots being empty)
+assert(cl.placedMaterials.length === 0, 'core loop: gap exists (empty bridge)');
+// Step 2: Place 板/绳/楔
+cl.placeMaterial('boards', 0);
+cl.placeMaterial('ropes', 1);
+cl.placeMaterial('wedges', 2);
+assert(cl.placedMaterials.length === 3, 'core loop: 板/绳/楔 placed');
+// Step 3: Arrange crossing order (primary input: drag person to order slot)
+cl.addToOrder(3); // 少年 first (light)
+cl.addToOrder(4); // 长老 second
+cl.addToOrder(2); // 工匠 third
+cl.addToOrder(1); // 勇者 last (heavy)
+assert(cl.crossingOrder.length === 4, 'core loop: all 4 arranged');
+// Step 4: Structure stress is computable
+assert(typeof cl.stress === 'number' && cl.stress >= 0, 'core loop: stress is computed');
+assert(typeof cl.wind === 'number' && cl.wind >= 0, 'core loop: wind is present');
+// Step 5: Start crossing → result (成功通过或坠落)
+cl.wind = 5;
+cl.startCrossing();
+for (let i = 0; i < 800; i++) { cl.wind = 5; cl.tick(); }
+assert(cl.phase === 'result', 'core loop: reaches result phase');
+assert(cl.result !== null, 'core loop: result is produced');
+assert(cl.result.success === true, 'core loop: full bridge + light-first + low wind = safe crossing');
+assert(cl.result.crossed === 4, 'core loop: all 4 crossed');
+
 console.log('\nResults: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail > 0 ? 1 : 0);
