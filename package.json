@@ -1,0 +1,11 @@
+{
+  "name": "tianti-zuihou-yiji",
+  "version": "0.1.0",
+  "description": "天梯最后一级 - Direction Lock microgame skeleton",
+  "private": true,
+  "scripts": {
+    "start": "npx http-server . -p 8080 -c-1",
+    "test": "node src/test.js"
+  },
+  "license": "MIT"
+}
