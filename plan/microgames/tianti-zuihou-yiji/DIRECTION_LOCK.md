@@ -17,12 +17,18 @@
 - 不新增第二套主循环
 - 不把小游戏扩成长期经营或开放世界
 
+## Progression Rhythm (20min total)
+1. Phase 1 (0–5min): 短缺口 1 段，材料充裕 3 板 2 绳 1 楔，3 人通行，微风
+2. Phase 2 (5–10min): 缺口 2 段，材料减少 2 板 2 绳 1 楔，5 人，风渐起
+3. Phase 3 (10–15min): 缺口 2 段 + 人员重量差 (轻/中/重)，强风，1 板 1 绳 2 楔
+4. Phase 4 (15–20min): 缺口 3 段，塔顶风暴，仅 1 板 1 绳 1 楔，最后通行
+
 ## Required State
-- materials
-- stress
-- wind
-- crossing_order
-- crossing_progress
+- materials: { board: int, rope: int, wedge: int } — 剩余可用材料数量
+- stress: float 0–100 — 当前结构应力，≥100 即坍塌
+- wind: float 0–100 — 风力等级，影响应力增量
+- crossing_order: Person[] — 按玩家安排的通行队列
+- crossing_progress: int — 已安全通过人数
 
 ## Success
 在限定时长内完成主循环，并稳定进入至少一个可结算结局
