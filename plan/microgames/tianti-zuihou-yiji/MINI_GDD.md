@@ -13,11 +13,11 @@
 
 ## State
 
-- resource
-- pressure
-- risk
-- relation
-- round
+- materials
+- stress
+- wind
+- crossing_order
+- crossing_progress
 
 ## UI
 

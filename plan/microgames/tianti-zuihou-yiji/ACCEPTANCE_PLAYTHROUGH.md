@@ -1,7 +1,7 @@
 # ACCEPTANCE_PLAYTHROUGH: 天梯最后一级
 
 ## Scripted Playthrough
-1. 开局显示 resource / pressure / risk / relation / round
+1. 开局显示 materials / stress / wind / crossing_order / crossing_progress
 2. 玩家执行一次核心操作：查看缺口 -> 放置板/绳/楔 -> 安排通过顺序 -> 结构受力 -> 成功通过或坠落
 3. 系统必须反馈一个资源或身体压力变化
 4. 系统必须反馈一个关系或风险变化
