@@ -1,46 +1,47 @@
 // main.js — 天梯最后一级 entry point & game loop
 
 (function () {
-  const state = new GameState();
-  const scene = window.GameScene;
+  var state = new GameState();
+  var scene = window.GameScene;
   scene.initInput(state);
 
-  const engine = new EventEngine(state);
-  let lastTime = 0;
-  const TICK_MS = 200; // 5 ticks/sec during crossing
-  let actionCounter = 0;
+  // Gracefully handle missing content.js / EventEngine
+  var engine = (typeof EventEngine !== 'undefined') ? new EventEngine(state) : null;
+  var lastTime = 0;
+  var TICK_MS = 200; // 5 ticks/sec during crossing
+  var actionCounter = 0;
 
   // Patch state.reset to also reset event engine
-  const origReset = state.reset.bind(state);
+  var origReset = state.reset.bind(state);
   state.reset = function () {
     origReset();
-    engine.reset();
+    if (engine) engine.reset();
   };
 
   // Hook: after each player action, check for events
-  const origPlace = state.placeMaterial.bind(state);
-  const origRemove = state.removeMaterial.bind(state);
-  const origAddOrder = state.addToOrder.bind(state);
-  const origRemoveOrder = state.removeFromOrder.bind(state);
+  var origPlace = state.placeMaterial.bind(state);
+  var origRemove = state.removeMaterial.bind(state);
+  var origAddOrder = state.addToOrder.bind(state);
+  var origRemoveOrder = state.removeFromOrder.bind(state);
 
   state.placeMaterial = function (type, slot) {
-    const r = origPlace(type, slot);
-    if (r) { actionCounter++; engine.check(); }
+    var r = origPlace(type, slot);
+    if (r) { actionCounter++; if (engine) engine.check(); }
     return r;
   };
   state.removeMaterial = function (slot) {
-    const r = origRemove(slot);
-    if (r) { actionCounter++; engine.check(); }
+    var r = origRemove(slot);
+    if (r) { actionCounter++; if (engine) engine.check(); }
     return r;
   };
   state.addToOrder = function (pid) {
-    const r = origAddOrder(pid);
-    if (r) { actionCounter++; engine.check(); }
+    var r = origAddOrder(pid);
+    if (r) { actionCounter++; if (engine) engine.check(); }
     return r;
   };
   state.removeFromOrder = function (pid) {
-    const r = origRemoveOrder(pid);
-    if (r) { actionCounter++; engine.check(); }
+    var r = origRemoveOrder(pid);
+    if (r) { actionCounter++; if (engine) engine.check(); }
     return r;
   };
 
@@ -48,16 +49,16 @@
     if (state.phase === 'cross') {
       if (now - lastTime >= TICK_MS) {
         state.tick();
-        engine.check();
+        if (engine) engine.check();
         lastTime = now;
       }
     }
     // Wire result content from event engine
-    if (state.phase === 'result' && !state._resultContent) {
+    if (state.phase === 'result' && !state._resultContent && engine) {
       state._resultContent = engine.getResultContent(state);
     }
     // Feed event messages to scene for rendering
-    state._eventMessages = engine.getMessages();
+    state._eventMessages = engine ? engine.getMessages() : [];
     scene.render(state);
     requestAnimationFrame(loop);
   }
