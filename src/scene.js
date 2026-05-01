@@ -154,6 +154,18 @@
       drawText(drag.label, drag.mx, drag.my + 5, '#fff', 13, 'center');
       ctx.globalAlpha = 1;
     }
+
+    // Event feedback messages (from content event pool)
+    if (state._eventMessages) {
+      var msgY = 560;
+      for (var mi = 0; mi < state._eventMessages.length && mi < 3; mi++) {
+        var msg = state._eventMessages[mi];
+        ctx.globalAlpha = Math.min(1, msg.ttl / 40);
+        drawRect(240, msgY + mi * 28, 480, 24, 'rgba(0,0,0,0.7)');
+        drawText(msg.text, 480, msgY + mi * 28 + 17, msg.color, 14, 'center');
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 
   // Hit testing helpers
